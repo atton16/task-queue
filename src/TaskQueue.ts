@@ -47,8 +47,7 @@ export class TaskQueue {
       return;
     }
     const job = this.queue.shift();
-    job.task().catch((e) => {
-      console.error(e);
+    job.task().catch(() => {
       if (typeof job.retry === 'number') {
         const retry = job.retry >= 0 ? job.retry : 0;
         setTimeout(() => this.push(job), retry);
