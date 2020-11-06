@@ -9,6 +9,7 @@ export class TaskQueue {
   started = false;
   private timeouts: NodeJS.Timeout[] = [];
   private queue: Job[] = [];
+  private running = 0;
 
   constructor(opt?: TaskQueueConstructorOptions) {
     if (opt !== undefined) {
@@ -49,11 +50,15 @@ export class TaskQueue {
 
   process(): void {
     for (let i = 0; i < this.opt.concurrent; i++) {
-      if (!this.queue.length) {
+      if (!this.queue.length || this.running >= this.opt.concurrent) {
         break;
       }
       const job = this.queue.shift();
-      job.task().catch(() => {
+      this.running++;
+      job.task().then(() => {
+        this.running--;
+      }).catch(() => {
+        this.running--;
         if (typeof job.retry === 'number') {
           const retry = job.retry >= 0 ? job.retry : 0;
           setTimeout(() => this.push(job), retry);
