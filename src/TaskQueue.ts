@@ -20,6 +20,10 @@ export class TaskQueue {
     this.queue.push(job);
   }
 
+  length(): number {
+    return this.queue.length;
+  }
+
   start(): void {
     if (this.started) {
       throw new TaskQueueError('start is called while TaskQueue is running.', 1);
