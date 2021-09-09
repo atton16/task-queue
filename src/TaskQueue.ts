@@ -5,15 +5,18 @@ import { TaskQueueError } from './TaskQueueError';
 export class TaskQueue {
   private opt: TaskQueueConstructorOptions = {
     concurrent: 1000,
+    delay: 10,
   };
   started = false;
-  private timeouts: NodeJS.Timeout[] = [];
   private queue: Job[] = [];
   private running = 0;
 
   constructor(opt?: TaskQueueConstructorOptions) {
     if (opt !== undefined) {
       this.opt = opt;
+    }
+    if (!this.opt.delay) {
+      this.opt.delay = 10;
     }
   }
 
@@ -25,15 +28,18 @@ export class TaskQueue {
     return this.queue.length;
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (this.started) {
       throw new TaskQueueError('start is called while TaskQueue is running.', 1);
     }
     this.started = true;
-    this.timeouts.push(setInterval(this.process.bind(this), 0));
-    // for (let i = 0; i < this.opt.concurrent; i++) {
-    //   this.timeouts.push(setInterval(this.process.bind(this), 0));
-    // }
+    const loop = () => {
+      this.process();
+      if (this.started) {
+        setTimeout(() => loop(), this.opt.delay);
+      }
+    };
+    loop();
   }
 
   shutdown(): void {
@@ -41,11 +47,11 @@ export class TaskQueue {
       throw new TaskQueueError('shutdown is called while TaskQueue is already stopped.', 2);
     }
 
-    this.timeouts.forEach(t => {
-      clearInterval(t);
-    });
-    this.timeouts = [];
     this.started = false;
+  }
+
+  delay(ms: number): Promise<void> {
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 
   process(): void {
